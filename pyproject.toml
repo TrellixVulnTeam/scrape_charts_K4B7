@@ -4,11 +4,7 @@ requires = [
     "wheel",
     "beautifulsoup4",
     "requests",
-    "pandas"
+    "pandas",
+    "lxml"
 ]
 build-backend = "setuptools.build_meta"
-
-[metadata]
-name = "scrape_charts"
-version = 1.0
-description = "A package that scrapes and processes a chart from a website into a usable form, specifically either a list or a dict."
