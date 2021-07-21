@@ -27,7 +27,6 @@ class Scraper:
             self.getTables(self.scrapeSite(eachSite))
         for eachRawChart in self.rawCharts:
             self.listedCharts.append(self.makelist(eachRawChart))
-        print("(scraper) time to choose which charts to keep")
         self.displayTables()
         
             
@@ -51,7 +50,6 @@ class Scraper:
         print("(scraper) BeautifulSoup has parsed the website")
         self.rawCharts = list()
         self.rawCharts = self.rawCharts + soup.find_all('table')
-        print(self.rawCharts)
 
     def makelist(self, table):
         """
@@ -59,29 +57,19 @@ class Scraper:
         :param listOfTables: list of or one of a htmldoc
         :return: tables as pandas' DataFrame
         """
-        try:
-            rows = table.find_all('tr')
-            if bool(rows):
-                for i in rows:
-                    table_data = i.find_all('td')
-                    data = [j.text for j in table_data]
-                    print(data)
-            # result = []
-            # allrows = []
-            # for row in table:
-            #     allrows.append(table.find_all('tr'))
-            # allcols = []
-            # for row in allrows:
-            #     result.append([])
-            #     allcols = allcols + row.find_all('td')
-            # for col in allcols:
-            #     thestrings = [str(s) for s in col.find_all(text=True)]
-            #     thetext = ''.join(thestrings)
-            #     result[-1].append(thetext)
-            # return result
-        except AttributeError:
-            print("(scraper) Possibly something went wrong and the results won't match what you expect")
-            return []
+        com=[]
+        for row in table.find_all("tr")[1:]:
+            print(row)
+            col = row.find_all("td")
+            print(col)
+            if len(col)> 0:
+                temp=col[1].contents[0]
+                try:
+                    to_append=temp.contents[0]
+                except Exception as e:
+                    to_append=temp
+                com.append(to_append)
+        return com
 
     def displayTables(self):
         """
@@ -89,11 +77,18 @@ class Scraper:
         :param listOfTables: list of or one of a htmldoc
         :return: tables as pandas' DataFrame
         """
-        df = pd.DataFrame(self.listedCharts)
-        print(df)
-        print("(scraper) Remove unnecsary charts through removing items from the list Scraper.listedCharts")
-        print("(scraper) Once done, call Scraper.cleanList with your preferred arguments to preview cleaning")
-        return df
+        print("(scraper) Time to choose which charts to keep")
+        chartsToKeep = []
+        for eachChart in self.listedCharts:
+            df = pd.DataFrame(eachChart)
+            print("\n" + df + "\n")
+            df.to_clipboard()
+            keepOrRemove = input("(scraper) Chart also copied to clipboard, type \"Keep\" or \"Remove\" without the quotation mark to keep or remove the chart\n What do you choose: ")
+            if (input == "Keep"):
+                chartsToKeep.append(eachChart)
+            else: 
+                pass
+        self.listedCharts = chartsToKeep
 
     def cleanList(self, whereToSplit=["\(", ","], whereToCombine=["/"], whichToKeep="[a-zA-Z]", whereToClean=[["[^a-zA-Z ]+", ""], [" +", " "]]):
         """
