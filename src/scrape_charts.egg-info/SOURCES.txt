@@ -1,0 +1,10 @@
+LICENSE
+README.md
+pyproject.toml
+setup.cfg
+src/chart_scraper/ChartScraper.py
+src/chart_scraper/__init__.py
+src/scrape_charts.egg-info/PKG-INFO
+src/scrape_charts.egg-info/SOURCES.txt
+src/scrape_charts.egg-info/dependency_links.txt
+src/scrape_charts.egg-info/top_level.txt
