@@ -2,20 +2,23 @@
 
 Follow the steps completed in test_scraper.py (located in the tests folder or below). The virtual environment is not necessary, pip will download all required packagesdoes not need to be activited, but the import statements probably appear slightly differently, however comments will rectify your confusion on the correct string to paste.
 
-Main feature: scrape charts from multiple websites into one large list
+Main feature: scrape multiple charts from one website or multiple websites, and then turn it into one large list
 
 Features include:
 
 * Scraping a chart from a website or multiple websites
-* Choosing and combining multiple websites' chartsinto one large list
-* Processing that larger list into a cleaned list
+* Choosing what charts you want from a website along with combining multiple websites' charts into one large chart
+* Processing that larger chart into a list
+* Cleaning that list
+* Cleaning the text with regex functions
+* No errors in the python package, eg. works out of the box
 * Converting that cleaned list into a panda dictionary
 * Converting that cleaned list into a dictionary
-* Saving those cleaned list into a json file, etc
+* Saving that cleaned list as a json file, etc
 * A very friendly to use class that does everything for you
-* A very friendly to use class that also has return statements at each stage so that if one part doesn't work, you can see the data and process it yourself (a contingency, as if you contacted me, I would fix the issue)
+* Return statements at every stage so that if one part doesn't work, you can see the data and process it yourself (a contingency, because if you contacted me, I would fix the issue)
 * A maintainer
-* No bugs or issues at the time of writing, (unit testing in place, )
+* No bugs or issues at the time of writing, (unit testing exists partially)
 * Regex functions that are explained below
 
 ```Python

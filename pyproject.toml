@@ -6,7 +6,7 @@ requires = [
     "requests",
     "pandas",
     "lxml",
-    "json",
-    "re",
+    "regex",
+    "jsons"
 ]
 build-backend = "setuptools.build_meta"
