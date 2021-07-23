@@ -1,7 +1,7 @@
 import re
 import pandas as pd
 import requests
-from requests.api import head
+from bs4 import BeautifulSoup
 
 class Scraper:
     """
@@ -14,7 +14,7 @@ class Scraper:
         """
         Please note: each website should remain in string format
         """
-        self.dataFrames = []
+        self.listedCharts = list()
         if type(websites) is str:
             self.websites = [websites]
             print("(scraper) Single website saved as list")
@@ -24,8 +24,7 @@ class Scraper:
             print("(scraper) Websites saved as list")
             print(self.websites)
         for eachSite in self.websites:
-            sitesDataFrames = pd.read_html(self.scrapeSite(eachSite))
-            self.dataFrames = self.dataFrames + [dataFrame for dataFrame in sitesDataFrames]
+            self.listedCharts = self.listedCharts + self.getTables(self.scrapeSite(eachSite))
         self.displayTables()
 
     def scrapeSite(self, url):
@@ -38,23 +37,65 @@ class Scraper:
         print("(scraper) Found " + url)
         return toReturn
 
-    def displayTables(self, dataFrame=True):
+    def getTables(self, htmldoc):   
         """
-        Print all tables so that you can pick the tables you want
-        :bool dataFrame: prints the listedChart instead of the dataFrames
+        With website or websites, find all tables
+        :param htmldoc: list of or one of a htmldoc
+        :return: tables as a list
+        """
+        soup = BeautifulSoup(htmldoc, features="html.parser")
+        toReturn = []
+        for eachTable in soup.findAll("table"):
+            toReturn.append(self.makelist(eachTable))
+        return toReturn
+
+    def makelist(self, table):
+        """
+        Print all tables so that you can pick the tables you want (not my code, but still reliable)
+        :param listOfTables: list of or one of a htmldoc
         :return: tables as pandas' DataFrame
         """
-        if dataFrame:
-            print("(scraper) Time to choose which charts to keep, you can only choose one, it'll keep the last one you picked")
-            indexToKeep = 0
-            for index, eachDataframe in enumerate(self.dataFrames):
+        result = []
+        allrows = table.findAll('tr')
+        for row in allrows:
+            result.append([])
+            allcols = row.findAll('td')
+            for col in allcols:
+                thestrings = [str(s) for s in col.findAll(text=True)]
+                thetext = ''.join(thestrings)
+                result[-1].append(thetext)
+        return result
+
+    def displayTables(self, chooseTables=True, displayRawCharts=False):
+        """
+        Print all tables so that you can pick the tables you want
+        :bool chooseTables: chooseTables or display tables
+        :bool displayRawCharts: displayRawTables or display the processed combinedChart (works only whenChooseTable is false)
+        :return: tables as pandas' DataFrame
+        """
+        if chooseTables:
+            print("(scraper) Time to choose which charts to keep, call this again if you want to remove another chart")
+            indexesToKeep = []
+            for index, eachDataframe in enumerate(self.listedCharts):
                 print(eachDataframe)
                 keep = input("(scraper) type Keep to keep this dataframe: ")
                 if (keep == "Keep"):
-                    indexToKeep = index
-            self.dataFrames = self.dataFrames[indexToKeep]
+                    indexesToKeep.append(index)
+            listsToKeep = list()
+            self.combinedChart = []
+            if len(indexesToKeep) >= 1:
+                for eachIndex in indexesToKeep:
+                    listsToKeep = listsToKeep + self.listedCharts[eachIndex]
+                    self.combinedChart = listsToKeep
+            else:
+                print("(scraper) No charts chosen, so no lists removed")
         else:
-            print(self.listedChart)
+            if displayRawCharts:
+                for index, eachDataframe in enumerate(self.listedCharts):
+                    print(eachDataframe)
+                    input("(scraper) Press enter to continue" + str(index) +": ")
+            else:
+                print(self.combinedChart)
 
     def cleanList(self, whereToSplit=["\(", ","], whereToCombine=["/"], whichToKeep="[a-zA-Z]", whereToClean=[["[^a-zA-Z ]+", ""], [" +", " "]]):
         """
@@ -66,11 +107,11 @@ class Scraper:
         :List<List<String0, String1> whereToCombine: string0 is first part of regex sub equation, string1 is what is substituted for string0
         :return: processedList
         """
-        processedList = []
-        for dirtyPart in self.dataFrames.values.tolist():
+        processedTable = []
+        for dirtyRow in self.combinedChart:
             # For stepOne, each string is split into parts
             stepOne = []
-            for unsplitPart in dirtyPart:
+            for unsplitPart in dirtyRow:
                 if type(unsplitPart) is str:
                     for splitPoint in whereToSplit:
                         if (bool(re.search(splitPoint, unsplitPart))):
@@ -109,9 +150,9 @@ class Scraper:
                     stepThree.append(tuple(list(set(listOfCleanedParts))))
             # The last thing to check
             if (stepThree):
-                processedList.append(tuple(list(set(stepThree))))
-        self.listedChart = processedList
-
+                processedTable.append(tuple(list(set(stepThree))))
+        self.combinedChart = processedTable
+    
     def listToDict(self, indexList=[0, 1, 2], keyAsList=False, includePrintStatement=True):
         """
         This functions converts the saved class variable of the list into a dictionary with the first index as the key and the other indexes in a list. You can change the order by passing in a value for the default.
@@ -121,7 +162,7 @@ class Scraper:
         :return: dictionary
         """
         self.dictionariedChart = dict()
-        for eachRow in self.listedChart:
+        for eachRow in self.combinedChart:
             try:
                 reorderedList = []
                 for eachIndex in indexList:
