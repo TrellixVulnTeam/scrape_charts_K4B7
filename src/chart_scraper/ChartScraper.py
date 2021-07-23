@@ -2,6 +2,7 @@ import re
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
+import json
 
 class Scraper:
     """
@@ -10,22 +11,20 @@ class Scraper:
         :String url: list of urls or a single url
         :return: nothing, but a print statement will pop up
         """
-    def __init__(self, websites):
+    def __init__(self, websites, chartNumber=[]):
         """
         Please note: each website should remain in string format
         """
         self.listedCharts = list()
         if type(websites) is str:
             self.websites = [websites]
-            print("(scraper) Single website saved as list")
-            print(self.websites)
+            print("(scraper) Single website saved")
         else:
             self.websites = websites
-            print("(scraper) Websites saved as list")
-            print(self.websites)
+            print("(scraper) Websites saved")
         for eachSite in self.websites:
             self.listedCharts = self.listedCharts + self.getTables(self.scrapeSite(eachSite))
-        self.displayTables()
+        self.displayTables(chartNumber=chartNumber)
 
     def scrapeSite(self, url):
         """
@@ -66,29 +65,36 @@ class Scraper:
                 result[-1].append(thetext)
         return result
 
-    def displayTables(self, chooseTables=True, displayRawCharts=False):
+    def displayTables(self, chooseTables=True, displayRawCharts=False, chartNumber=[]):
         """
         Print all tables so that you can pick the tables you want
         :bool chooseTables: chooseTables or display tables
         :bool displayRawCharts: displayRawTables or display the processed combinedChart (works only whenChooseTable is false)
+        :bool chartNumber: if you know the indexes of the charts you want
         :return: tables as pandas' DataFrame
         """
         if chooseTables:
-            print("(scraper) Time to choose which charts to keep, call this again if you want to remove another chart")
-            indexesToKeep = []
-            for index, eachDataframe in enumerate(self.listedCharts):
-                print(eachDataframe)
-                keep = input("(scraper) type Keep to keep this dataframe: ")
-                if (keep == "Keep"):
-                    indexesToKeep.append(index)
-            listsToKeep = list()
-            self.combinedChart = []
-            if len(indexesToKeep) >= 1:
-                for eachIndex in indexesToKeep:
-                    listsToKeep = listsToKeep + self.listedCharts[eachIndex]
-                    self.combinedChart = listsToKeep
+            if (not bool(chartNumber)):
+                print("(scraper) Time to choose which charts to keep, call this again if you want to remove another chart")
+                indexesToKeep = []
+                for index, eachDataframe in enumerate(self.listedCharts):
+                    print(eachDataframe)
+                    keep = input("(scraper) type Keep to keep this dataframe: ")
+                    if (keep == "Keep"):
+                        indexesToKeep.append(index)
+                listsToKeep = list()
+                self.combinedChart = []
+                if len(indexesToKeep) >= 1:
+                    for eachIndex in indexesToKeep:
+                        listsToKeep = listsToKeep + self.listedCharts[eachIndex]
+                        self.combinedChart = listsToKeep
+                else:
+                    print("(scraper) No charts chosen, so no lists removed")
             else:
-                print("(scraper) No charts chosen, so no lists removed")
+                listsToKeep = list()
+                for eachIndex in chartNumber:
+                        listsToKeep = listsToKeep + self.listedCharts[eachIndex]
+                        self.combinedChart = listsToKeep
         else:
             if displayRawCharts:
                 for index, eachDataframe in enumerate(self.listedCharts):
@@ -97,7 +103,7 @@ class Scraper:
             else:
                 print(self.combinedChart)
 
-    def cleanList(self, whereToSplit=["\(", ","], whereToCombine=["/"], whichToKeep="[a-zA-Z]", whereToClean=[["[^a-zA-Z ]+", ""], [" +", " "]]):
+    def cleanList(self, whichToKeep=False, whereToSplit=False, whereToCombine=False, whereToClean=[]):
         """
         This functions cleans the list by splitting it and removing unnecessary characters or whitespace
         :list rawList: this is the list that is going to be cleaned
@@ -109,51 +115,62 @@ class Scraper:
         """
         processedTable = []
         for dirtyRow in self.combinedChart:
-            # For stepOne, each string is split into parts
-            stepOne = []
-            for unsplitPart in dirtyRow:
-                if type(unsplitPart) is str:
-                    for splitPoint in whereToSplit:
-                        if (bool(re.search(splitPoint, unsplitPart))):
-                            splitPart = re.split(splitPoint, unsplitPart)
-                            stepOne.append(splitPart)
-                        else:
-                            stepOne.append([unsplitPart])
+            # For stepZero, remove any strings without charactes a-z, 0-9, A-Z, or a space (" ")
+            stepZero = []
+            if (whichToKeep):
+                for eachString in dirtyRow:
+                    try:
+                        if (bool(re.search(whichToKeep, eachString))):
+                            stepZero.append(eachString)
+                    except:
+                        continue
+            else:
+                stepZero=dirtyRow
+            # For stepOne, split strings where necessary
+            stepOne=[]
+            if (whereToSplit):    
+                for unsplitString in stepZero:
+                    splitString = re.split(whereToSplit, unsplitString)
+                    stepOne.append(splitString)
+            else:
+                stepOne=stepZero
             # For stepTwo, each string is combined based on a certain part, eg. this string 'a/b/c' is turned into ['a', 'ab', 'ac']
             stepTwo = []
-            for combinePoint in whereToCombine:
+            if (whereToCombine):
                 for listOfUncombinedStrings in stepOne:
                     listOfCombinedParts = []
                     for uncombinedPart in listOfUncombinedStrings:
-                        if (re.search(combinePoint, uncombinedPart)):
-                            combinedPart = re.split(combinePoint, uncombinedPart)
-                            setup = [combinedPart[0]]
-                            combinedPart.pop(0)
-                            for eachSubPart in uncombinedPart:
-                                eachSubPart = setup[0] + eachSubPart
-                                setup.append(eachSubPart)
-                            listOfCombinedParts = listOfCombinedParts + setup
-                        else:
-                            listOfCombinedParts = listOfCombinedParts + [uncombinedPart]
+                        combinedPart = re.split(whereToCombine, uncombinedPart)
+                        setup = [combinedPart[0]]
+                        combinedPart.pop(0)
+                        for eachSubPart in combinedPart:
+                            eachSubPart = setup[0] + eachSubPart
+                            setup.append(eachSubPart)
+                        listOfCombinedParts = listOfCombinedParts + setup
                     stepTwo.append(listOfCombinedParts)
+            else:
+                stepTwo = stepOne
             # For stepThree, all empty parts are removed
             stepThree = []
-            for listOfUncleanedParts in stepTwo:
-                listOfCleanedParts = []
-                for uncleanedPart in listOfUncleanedParts:
-                    if (bool(re.search(whichToKeep, uncleanedPart))):
-                        for cleanPoint in whereToClean:
-                            cleanedPart = re.sub(cleanPoint[0], cleanPoint[1], unsplitPart)
-                            cleanedPart = unsplitPart.strip()
-                            listOfCleanedParts.append(cleanedPart)
-                if (listOfCleanedParts):
-                    stepThree.append(tuple(list(set(listOfCleanedParts))))
+            for listOfUncleanedStrings in stepTwo:
+                listOfCleanedStrings = []
+                for uncleanedString in listOfUncleanedStrings:
+                    cleanedString = uncleanedString
+                    for eachCleanPoint in whereToClean:
+                        cleanedString = re.sub(eachCleanPoint[0], eachCleanPoint[1], cleanedString)
+                    cleanedString = cleanedString.strip()
+                    if(cleanedString or cleanedString not in listOfCleanedStrings):
+                        listOfCleanedStrings.append(cleanedString)
+                listOfCleanedStrings = (listOfCleanedStrings)
+                if (listOfCleanedStrings or listOfCleanedStrings not in stepThree):
+                    stepThree.append(listOfCleanedStrings)
             # The last thing to check
             if (stepThree):
-                processedTable.append(tuple(list(set(stepThree))))
+                processedTable.append((stepThree))
         self.combinedChart = processedTable
+        return self.combinedChart
     
-    def listToDict(self, indexList=[0, 1, 2], keyAsList=False, includePrintStatement=True):
+    def listToDict(self, indexList=[0,1,2,3], keysAreLists=False, includePrintStatement=True):
         """
         This functions converts the saved class variable of the list into a dictionary with the first index as the key and the other indexes in a list. You can change the order by passing in a value for the default.
         :list indexList: this is the order of the indexes used
@@ -168,12 +185,12 @@ class Scraper:
                 for eachIndex in indexList:
                     reorderedList.append(eachRow[eachIndex])
                 key = reorderedList[0]
-                value = reorderedList.pop(0)
-                if keyAsList:
-                    self.dictionariedChart.update({key: value})
+                reorderedList.pop(0)
+                if keysAreLists:
+                    self.dictionariedChart.update({key: reorderedList})
                 else:
-                    for eachItem in key:
-                        self.dictionariedChart.update({eachItem: value})
+                    for eachKey in key:
+                        self.dictionariedChart.update({eachKey: reorderedList})
             except IndexError:
                 pass
         if includePrintStatement:
@@ -186,7 +203,7 @@ class Scraper:
         :bool includePrintStatement: prints out "(scraper) You can get the keys by calling Scraper.dictKeys or saving the return statement"
         :return: list of keys
         """
-        self.dictKeys = dict(self.dictionariedChart).keys()
+        self.dictKeys = self.dictionariedChart.keys()
         if includePrintStatement:
             print("(scraper) You can get the keys by calling Scraper.dictKeys or saving the return statement")
         return self.dictKeys
@@ -197,10 +214,45 @@ class Scraper:
         :param test: usually a string, however, other options will work
         :return: dictionary with keys and values that worked
         """
-        components = self.dictKeys
-        foundKey = [eachComponent for eachComponent in components if eachComponent in testWord]
-        foundData = {}
+        foundKey = [eachComponent for eachComponent in self.dictionariedChart if eachComponent in testWord]
+        foundData = dict()
         for eachKey in foundKey:
-            foundData.update({eachKey: components[eachKey]})
+            foundData.update({eachKey: self.dictionariedChart[eachKey]})
         print(foundData)
         return foundData
+    
+    def createDataFrame(self):
+        """
+        This functions creates a pandas dataFrame from this class' saved dictionary.
+        :return: Pandas dataframe
+        """
+        self.dataFrame = pd.DataFrame.from_dict(self.dictionariedChart)
+        return self.dataFrame
+    
+    def saveFiles(self, filePath=False, fileType=0):
+        """
+        This function saves the dataFrame present. Don't put the file format in the filePath
+        :string filePath: empty filepath, nothing happens, else assign a filepath without an extension that is either fixed ("eg. C:/Users/yourUserNameHere/Downloads/data") or relative (eg. "data")
+        :string fileType: 0 is list, 1 is dictionary, 2 is pandas Dataframe
+        :return: the filetype you choose
+        """
+        if (filePath):
+            if fileType == 0:
+                with open(filePath + '.txt', 'w') as f:
+                    for listitem in self.combinedChart:
+                        f.write('%s\n' % listitem)
+                return self.combinedChart
+            elif fileType == 1:
+                with open(filePath + '.txt', 'w') as f:
+                    json.dumps(self.dictionariedChart, f, indent=4)
+                return self.dictionariedChart
+            elif fileType == 2:
+                self.dataFrame.to_csv(filePath)
+                return self.dataFrame
+        else:
+            if fileType == 0:
+                return self.combinedChart
+            elif fileType == 1:
+                return self.dictionariedChart
+            elif fileType == 2:
+                return self.dataFrame

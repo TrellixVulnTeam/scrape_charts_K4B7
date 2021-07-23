@@ -5,6 +5,7 @@ requires = [
     "beautifulsoup4",
     "requests",
     "pandas",
-    "lxml"
+    "lxml",
+    "json"
 ]
 build-backend = "setuptools.build_meta"
